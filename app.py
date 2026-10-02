@@ -34,8 +34,8 @@ st.markdown("""
         border-radius: 12px;
         padding: 14px;
         text-align: center;
-        font-size: 16px;
-        font-weight: 600;
+        font-size: 17px;
+        font-weight: 700;
         color: #1B5E20;
         margin-bottom: 18px;
     }
@@ -90,7 +90,23 @@ if "trader_directory" not in st.session_state:
         {"name": "कृष्णा फ्रेश वेज (लोकल वेंडर)", "phone": "+91 8875011223", "location": "कानोड़ चौराहा", "crop": "हरी मिर्च (Green Chilli)", "rate": 55, "unit": "किलो", "min_qty": "5 किलो", "transport_support": "नहीं (दुकान पर डिलीवरी)"}
     ]
 
-# Audio TTS & Mic Helper Function
+# Automatic Speech Function (Speaks immediately on page load)
+def auto_speak(text_content):
+    clean_text = text_content.replace('"', '').replace("'", "").replace('\n', ' ')
+    js_code = f"""
+    <script>
+        window.speechSynthesis.cancel();
+        setTimeout(function() {{
+            let utter = new SpeechSynthesisUtterance('{clean_text}');
+            utter.lang = 'hi-IN';
+            utter.rate = 0.95;
+            window.speechSynthesis.speak(utter);
+        }}, 300);
+    </script>
+    """
+    st.components.v1.html(js_code, height=0)
+
+# Manual Click to Listen Button
 def speak_button(text_content, button_text="🔊 आवाज़ में सुनें (Listen)"):
     clean_text = text_content.replace('"', '').replace("'", "").replace('\n', ' ')
     js_code = f"""
@@ -127,14 +143,14 @@ def mic_helper():
     """
     st.components.v1.html(mic_html, height=40)
 
-# Welcome message translations
+# Welcome message translations - EXACT FORMAT REQUESTED
 welcome_dict = {
-    "हिंदी (Hindi)": "राम राम सा! किसान सेतु ऐप में आपका स्वागत है।",
-    "मेवाड़ी (Mewari)": "राम राम सा! किसान सेतु में आपरो घणो-घणो स्वागत है।",
-    "मारवाड़ी (Marwari)": "खम्मा घणी सा! किसान सेतु पोर्टल माथे आपरो स्वागत है।",
-    "ગુજરાતી (Gujarati)": "નમસ્તે! કિસાન સેતુ એપમાં આપનું હાર્દિક સ્વાગત છે.",
-    "தமிழ் (Tamil)": "வணக்கம்! கிசான் சேது செயலியில் தங்களை வரவேற்கிறோம்.",
-    "English": "Welcome to KisanSetu AI – Smart Agri Intelligence Platform."
+    "हिंदी (Hindi)": "आपका किसानसेतु ऐप में स्वागत है!",
+    "मेवाड़ी (Mewari)": "आपरो किसानसेतु ऐप में स्वागत है!",
+    "मारवाड़ी (Marwari)": "आपरो किसानसेतु ऐप में घणो स्वागत है!",
+    "ગુજરાતી (Gujarati)": "કિસાન સેતુ એપમાં આપનું સ્વાગત છે!",
+    "தமிழ் (Tamil)": "கிசான் சேது செயலியில் தங்களை வரவேற்கிறோம்!",
+    "English": "Welcome to KisanSetu App!"
 }
 
 # ----------------- PAGE 1: DEDICATED ONBOARDING SCREEN -----------------
@@ -163,7 +179,7 @@ if not st.session_state["onboarded"]:
         ["👨‍🌾 किसान (Farmer - फसल बेचना, जांच व योजना)", "🏪 व्यापारी / खरीदार (Trader - उपज खरीदना व भाव देना)"]
     )
     
-    speak_button("राम राम सा! किसान सेतु में आपका स्वागत है। अपनी भाषा और प्रोफाइल चुनकर आगे बढ़ें।", "🔊 निर्देश बोलकर सुनें")
+    speak_button("किसान सेतु में आपका स्वागत है। अपनी भाषा और प्रोफाइल चुनकर आगे बढ़ें।", "🔊 निर्देश बोलकर सुनें")
     
     st.write("")
     if st.button("🚀 किसान सेतु पोर्टल में प्रवेश करें (Continue) ➔", use_container_width=True):
@@ -178,6 +194,9 @@ else:
     welcome_text = welcome_dict.get(st.session_state["selected_bhasha"], welcome_dict["हिंदी (Hindi)"])
     st.markdown(f'<div class="welcome-banner">✨ {welcome_text} ({st.session_state["selected_role"].split()[1]})</div>', unsafe_allow_html=True)
     
+    # Trigger Automatic Voice greeting on load
+    auto_speak(welcome_text)
+    
     col_nav1, col_nav2 = st.columns([3, 1])
     with col_nav2:
         if st.button("⚙️ रीसेट / भाषा"):
@@ -185,7 +204,7 @@ else:
             st.session_state["active_module"] = "dashboard"
             st.rerun()
     
-    # Complete Master Produce List (All-in-one search & select)
+    # Complete Master Produce List
     MASTER_PRODUCE_LIST = [
         "टमाटर (Tomato)", "प्याज (Onion)", "आलू (Potato)", "पत्तागोभी (Cabbage)", "फूलगोभी (Cauliflower)",
         "हरी मिर्च (Green Chilli)", "बैंगन (Brinjal)", "भिंडी (Okra)", "मटर (Green Peas)", "पालक (Spinach)",
@@ -403,7 +422,7 @@ else:
 
     # --- VIEW 5: MODULE 4 (VOICE ASSISTANT) ---
     elif st.session_state["active_module"] == "voice":
-        if st.button("⬅️ मुख्य डैशबोर्ड पर वापस जाएं"):
+        if st.button("⬅️️ मुख्य डैशबोर्ड पर वापस जाएं"):
             st.session_state["active_module"] = "dashboard"
             st.rerun()
             
