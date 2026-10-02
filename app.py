@@ -1,9 +1,14 @@
 import streamlit as st
 from PIL import Image
-import pandas as pd
+import google.generativeai as genai
 
 # Page Configuration - Mobile Responsive Layout
 st.set_page_config(page_title="KisanSetu AI", page_icon="🌾", layout="centered")
+
+# Configure Gemini API from Secrets
+api_key = st.secrets.get("GEMINI_API_KEY", "")
+if api_key:
+    genai.configure(api_key=api_key)
 
 # Mobile Screen Styling
 st.markdown("""
@@ -24,7 +29,7 @@ tab1, tab2, tab3 = st.tabs(["📸 फसल जांच (AI Scan)", "🚛 म�
 # ----------------- TAB 1: AI SCAN -----------------
 with tab1:
     st.subheader("फसल की फोटो लें / Upload Crop Photo")
-    st.caption("टमाटर, प्याज या किसी भी फसल की फोटो से AI बताएगा शेल्फ-लाइफ")
+    st.caption("टमाटर, प्याज या किसी भी फसल की फोटो से Gemini AI बताएगा शेल्फ-लाइफ")
     
     img_file = st.file_uploader("कैमरा या गैलरी से फोटो चुनें", type=["jpg", "jpeg", "png"])
     
@@ -32,18 +37,33 @@ with tab1:
         image = Image.open(img_file)
         st.image(image, caption="आपकी फसल", use_column_width=True)
         
-        if st.button("🔍 AI जांच शुरू करें (Analyze)", use_container_width=True):
-            with st.spinner("Google Gemini 1.5 Flash विश्लेषण कर रहा है..."):
-                st.success("✅ विश्लेषण पूरा हुआ!")
-                st.markdown("""
-                <div class="kisan-card">
-                    <h4>📊 AI गुणवत्ता रिपोर्ट (Quality Report)</h4>
-                    <p><b>फसल:</b> टमाटर (Tomato)</p>
-                    <p><b>ग्रेड:</b> Grade A (ताज़ा / Premium)</p>
-                    <p><b>बची हुई शेल्फ लाइफ:</b> <b>4 से 5 दिन</b></p>
-                    <p><b>सलाह:</b> फसल बिल्कुल ताज़ा है। इसे 30 किमी दूर जिला मंडी ले जाने पर 40% अधिक मुनाफा मिलेगा।</p>
-                </div>
-                """, unsafe_allow_html=True)
+        if st.button("🔍 AI जांच शुरू करें (Analyze with Gemini)", use_container_width=True):
+            if not api_key:
+                st.error("Gemini API Key configure nahi hai. Streamlit settings me key dalein.")
+            else:
+                with st.spinner("Google Gemini 1.5 Flash फसल का विश्लेषण कर रहा है..."):
+                    try:
+                        model = genai.GenerativeModel("gemini-1.5-flash")
+                        prompt = """
+                        You are an expert Agricultural Produce Quality Assessor for Indian farmers.
+                        Analyze the attached produce image carefully and output the following in simple Hindi:
+                        1. Fasal ka naam (Crop Name)
+                        2. Quality Grade (Grade A - Fresh/Premium, Grade B - Good, Grade C - Perishable/Needs Quick Sale)
+                        3. Estimated Remaining Shelf-Life (in days)
+                        4. Actionable Advice for Farmer (Kisan ke liye sujhav)
+                        Keep the language very simple and encouraging.
+                        """
+                        response = model.generate_content([prompt, image])
+                        
+                        st.success("✅ विश्लेषण पूरा हुआ!")
+                        st.markdown(f"""
+                        <div class="kisan-card">
+                            <h4>📊 Gemini AI गुणवत्ता रिपोर्ट</h4>
+                            {response.text}
+                        </div>
+                        """, unsafe_allow_html=True)
+                    except Exception as e:
+                        st.error(f"Error analyzing image: {e}")
 
 # ----------------- TAB 2: MANDI PROFIT -----------------
 with tab2:
@@ -84,7 +104,7 @@ with tab3:
     st.markdown("""
     <div class="kisan-card">
         <h4>📋 अनुशंसित फसल चक्र</h4>
-        <p>• <b>60% क्षेत्र:</b> दलहन/अनाज (सुरक्षित आय)</p>
+        <p>• <b>60% क्षेत्र:</b> दलहन/अनाज (कम पानी, सुरक्षित आय)</p>
         <p>• <b>40% क्षेत्र:</b> उच्च मूल्य नकदी फसल (High Value Perishables)</p>
         <hr>
         <h4>🏛️ सरकारी योजनाएं</h4>
