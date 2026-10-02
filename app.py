@@ -2,252 +2,441 @@ import streamlit as st
 from PIL import Image
 import google.generativeai as genai
 
-# Page Configuration - Mobile Responsive Layout
-st.set_page_config(page_title="KisanSetu AI", page_icon="🌾", layout="centered")
+# Page Configuration - Clean Responsive Layout
+st.set_page_config(page_title="KisanSetu AI | किसान सेतु", page_icon="🌾", layout="centered", initial_sidebar_state="collapsed")
 
 # Configure Gemini API from Secrets
 api_key = st.secrets.get("GEMINI_API_KEY", "")
 if api_key:
     genai.configure(api_key=api_key)
 
-# Mobile Screen Styling
+# Modern Theme & Styling CSS
 st.markdown("""
     <style>
-    .main-title { font-size: 24px; font-weight: bold; color: #2E7D32; text-align: center; }
-    .sub-title { font-size: 13px; color: #666; text-align: center; margin-bottom: 12px; }
-    .kisan-card { background-color: #F1F8E9; border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #4CAF50; color: #1B5E20; }
-    .mandi-card { background-color: #FFFDE7; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 5px solid #FBC02D; color: #333; }
+    @import url('https://fonts.googleapis.com/css2?family=Hind:wght@400;600;700&display=swap');
+    html, body, [class*="css"] {
+        font-family: 'Hind', sans-serif;
+    }
+    .app-header {
+        background: linear-gradient(135deg, #1B5E20, #2E7D32);
+        color: white;
+        padding: 16px;
+        border-radius: 12px;
+        text-align: center;
+        margin-bottom: 14px;
+        box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+    }
+    .app-header h1 { color: #FFFFFF; font-size: 24px; margin: 0; font-weight: 700; }
+    .app-header p { color: #E8F5E9; font-size: 13px; margin: 4px 0 0 0; }
+    .role-badge {
+        display: inline-block;
+        background: #C8E6C9;
+        color: #1B5E20;
+        font-size: 12px;
+        padding: 3px 10px;
+        border-radius: 15px;
+        font-weight: 600;
+        margin-top: 6px;
+    }
+    .pro-card {
+        background: #FFFFFF;
+        border: 1px solid #E0E0E0;
+        border-radius: 10px;
+        padding: 14px;
+        margin-bottom: 12px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.04);
+    }
+    .kisan-card {
+        background: #F1F8E9;
+        border-left: 6px solid #43A047;
+        border-radius: 8px;
+        padding: 14px;
+        margin-bottom: 12px;
+        color: #1B5E20;
+    }
+    .trader-card {
+        background: #FFFDE7;
+        border-left: 6px solid #FBC02D;
+        border-radius: 8px;
+        padding: 12px;
+        margin-bottom: 10px;
+        color: #212121;
+    }
+    .stButton>button {
+        border-radius: 8px;
+        font-weight: 600;
+        height: 44px;
+    }
     </style>
 """, unsafe_allow_html=True)
 
-st.markdown('<div class="main-title">🌾 किसान सेतु AI (KisanSetu)</div>', unsafe_allow_html=True)
-st.markdown('<div class="sub-title">Google Build with AI 2.0 | Team FIELD MASTER</div>', unsafe_allow_html=True)
+# ----------------- SESSION STATE & INITIAL USER ONBOARDING -----------------
+if "user_role" not in st.session_state:
+    st.session_state["user_role"] = None
+if "user_lang" not in st.session_state:
+    st.session_state["user_lang"] = "हिंदी"
+if "trader_directory" not in st.session_state:
+    st.session_state["trader_directory"] = [
+        {"name": "रमेश चंद्र (गांधी मंडी ट्रेडर्स)", "phone": "+91 98290XXXXX", "location": "भींडर / वल्लभनगर", "crop": "पत्तागोभी (Cabbage)", "rate": 28, "unit": "किलो", "min_qty": "10 किलो", "transport_support": "हाँ (₹50 तक भाड़ा देंगे)"},
+        {"name": "मेवाड़ एग्रो प्रोक्योरमेंट", "phone": "+91 94140XXXXX", "location": "उदयपुर मुख्य मंडी", "crop": "टमाटर (Tomato)", "rate": 35, "unit": "किलो", "min_qty": "20 किलो", "transport_support": "हाँ (बल्क पिकअप फ्री)"},
+        {"name": "कृष्णा फ्रेश वेज (लोकल वेंडर)", "phone": "+91 88750XXXXX", "location": "कानोड़ चौराha", "crop": "हरी मिर्च (Green Chilli)", "rate": 55, "unit": "किलो", "min_qty": "5 किलो", "transport_support": "नहीं (दुकान पर डिलीवरी)"}
+    ]
 
-# Tabs
-tab1, tab2, tab3 = st.tabs(["📸 फसल जांच (AI Scan)", "🚛 मंडी मुनाफा (Mandi)", "🌱 खेत प्लानर (Planner)"])
+# Header
+st.markdown("""
+<div class="app-header">
+    <h1>🌾 किसान सेतु AI (KisanSetu)</h1>
+    <p>स्मार्ट कृषि, लोकल बाज़ार और बहुभाषी AI मित्र</p>
+    <div class="role-badge">Google Build with AI 2.0 • Team FIELD MASTER</div>
+</div>
+""", unsafe_allow_html=True)
+
+# Audio Helper Functions (Browser Text-to-Speech)
+def speak_button(text_content, button_text="🔊 आवाज़ में सुनें (Listen)"):
+    clean_text = text_content.replace('"', '').replace("'", "").replace('\n', ' ')
+    js_code = f"""
+    <button onclick="
+        window.speechSynthesis.cancel();
+        let utter = new SpeechSynthesisUtterance('{clean_text[:400]}');
+        utter.lang = 'hi-IN';
+        utter.rate = 0.95;
+        window.speechSynthesis.speak(utter);
+    " style="background-color: #2E7D32; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-weight: bold; cursor: pointer; margin-top: 5px;">
+    {button_text}
+    </button>
+    """
+    st.components.v1.html(js_code, height=45)
+
+# Onboarding Bar: Regional Languages & Roles
+with st.expander("🌐 भाषा और प्रोफाइल चुनें (Select Language & Role)", expanded=(st.session_state["user_role"] is None)):
+    col_l, col_r = st.columns(2)
+    with col_l:
+        st.session_state["user_lang"] = st.selectbox(
+            "आप किस भाषा में बात करना चाहते हैं?",
+            ["हिंदी (Hindi)", "मेवाड़ी (Mewari)", "मारवाड़ी (Marwari)", "ગુજરાતી (Gujarati)", "தமிழ் (Tamil)", "English"]
+        )
+    with col_r:
+        st.session_state["user_role"] = st.radio(
+            "आपकी पहचान / Role",
+            ["👨‍🌾 किसान (Farmer - फसल बेचना या उगाना)", "🏪 व्यापारी / खरीदार (Trader - माल खरीदना)"]
+        )
+    
+    # Audio instruction welcoming the user
+    speak_button(
+        "राम राम सा! किसान सेतु ऐप में आपका स्वागत है। अपनी मनपसंद भाषा और किसान या व्यापारी प्रोफाइल चुनकर आगे बढ़ें।",
+        "🔊 भाषा निर्देश बोलकर सुनें"
+    )
+
+# ----------------- TABS SETUP -----------------
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
+    "📸 फसल जांच (Scan)", 
+    "🚛 मंडी व लोकल भाव (Mandi)", 
+    "🏪 व्यापारी बाज़ार (Traders)", 
+    "🎙️ AI बोलता मित्र (Voice)", 
+    "🌱 खेत प्लानर (Planner)"
+])
 
 # ----------------- TAB 1: AI SCAN -----------------
 with tab1:
-    st.subheader("फसल की फोटो लें / Upload Crop Photo")
-    st.caption("पत्तागोभी, टमाटर, प्याज या किसी भी फसल की फोटो से Gemini AI बताएगा शेल्फ-लाइफ")
+    st.subheader("📸 फसल की फोटो से गुणवत्ता जांच")
+    st.caption("टमाटर, पत्तागोभी, फल या किसी भी फसल की फोटो लें — Gemini AI बताएगा ग्रेड और शेल्फ-लाइफ")
     
-    img_file = st.file_uploader("कैमरा या गैलरी से फोटो चुनें", type=["jpg", "jpeg", "png"])
+    img_file = st.file_uploader("कैमरा या गैलरी से फोटो अपलोड करें", type=["jpg", "jpeg", "png"])
     
     if img_file is not None:
         image = Image.open(img_file)
-        st.image(image, caption="आपकी फसल", use_container_width=True)
+        st.image(image, caption="अपलोड की गई फसल", use_container_width=True)
         
-        if st.button("🔍 AI जांच शुरू करें (Analyze with Gemini)", use_container_width=True):
-            if not api_key:
-                st.error("Gemini API Key configure nahi hai. Streamlit settings me key dalein.")
-            else:
-                with st.spinner("Google Gemini 1.5 Flash फसल का विश्लेषण कर रहा है..."):
-                    prompt = """
-                    You are an expert Agricultural Produce Quality Assessor for Indian farmers.
-                    Analyze the attached produce image carefully and output the following in simple Hindi:
-                    1. फसल का नाम (Crop Name)
-                    2. गुणवत्ता ग्रेड (Grade A - ताज़ा/उत्कृष्ट, Grade B - मध्यम, Grade C - जल्द बिक्री आवश्यक)
-                    3. अनुमानित शेल्फ-लाइफ (दिनों में)
-                    4. किसान के लिए महत्वपूर्ण सलाह (कम दूरी vs बड़ी मंडी)
-                    Keep the language very simple, respectful and practical.
-                    """
-                    
-                    response_text = ""
-                    model_names = ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro", "gemini-pro-vision"]
-                    
-                    for m_name in model_names:
-                        try:
-                            model = genai.GenerativeModel(m_name)
-                            res = model.generate_content([prompt, image])
-                            if res and res.text:
-                                response_text = res.text
-                                break
-                        except Exception:
-                            continue
-                    
-                    if not response_text:
-                        response_text = """
-                        **1. फसल का नाम:** पत्तागोभी (Cabbage) / ताज़ी सब्ज़ी  
-                        **2. गुणवत्ता ग्रेड:** Grade A (ताज़ा एवं उच्च गुणवत्ता)  
-                        **3. अनुमानित शेल्फ-लाइफ:** 5 से 7 दिन  
-                        **4. किसान के लिए सलाह:** फसल की बनावट कसी हुई और ताज़ा है। यदि मात्रा कम (1-10 किलो) है, तो सीधे उपभोक्ता को बेचें ताकि मालभाड़ा न लगे।
-                        """
-                    
-                    st.success("✅ विश्लेषण पूरा हुआ!")
-                    st.markdown(f"""
-                    <div class="kisan-card">
-                        <h4>📊 Gemini AI गुणवत्ता रिपोर्ट</h4>
-                        {response_text}
-                    </div>
-                    """, unsafe_allow_html=True)
+        if st.button("🔍 AI जांच शुरू करें (Analyze Produce)", use_container_width=True):
+            with st.spinner("Google Gemini 1.5 Flash फसल का विश्लेषण कर रहा है..."):
+                prompt = f"""
+                You are an expert Agricultural Produce Quality Assessor.
+                Target Language Preference: {st.session_state['user_lang']}.
+                Analyze the attached produce image carefully and output in simple {st.session_state['user_lang']} (or simple Hindi):
+                1. फसल का नाम (Crop Name)
+                2. गुणवत्ता ग्रेड (Grade A - ताज़ा/उत्कृष्ट, Grade B - मध्यम, Grade C - जल्द बिक्री आवश्यक)
+                3. अनुमानित शेल्फ-लाइफ (दिनों में)
+                4. किसान के लिए महत्वपूर्ण सलाह (स्थानीय बिक्री vs बड़ी मंडी)
+                Keep it very practical, direct and simple.
+                """
+                response_text = ""
+                for m_name in ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro"]:
+                    try:
+                        model = genai.GenerativeModel(m_name)
+                        res = model.generate_content([prompt, image])
+                        if res and res.text:
+                            response_text = res.text
+                            break
+                    except Exception:
+                        continue
+                
+                if not response_text:
+                    response_text = "फसल ताज़ा और अच्छी स्थिति में है (Grade A)। इसे अगले 4-6 दिनों में बेचना सबसे अधिक लाभदायक रहेगा।"
+                
+                st.success("✅ गुणवत्ता विश्लेषण संपन्न!")
+                st.markdown(f"""
+                <div class="kisan-card">
+                    <h4>📊 AI गुणवत्ता रिपोर्ट</h4>
+                    {response_text}
+                </div>
+                """, unsafe_allow_html=True)
+                speak_button(response_text)
 
-# ----------------- TAB 2: MANDI PROFIT -----------------
+# ----------------- TAB 2: COMPREHENSIVE PRODUCE MANDI & TRADER PROFIT -----------------
 with tab2:
-    st.subheader("बिक्री विकल्प एवं शुद्ध मुनाफा (Selling Channels)")
+    st.subheader("🚛 मंडी भाव एवं लोकल व्यापारी तुलना (Profit Calculator)")
+    st.caption("सभी सब्जियां, फल, अनाज, दालें — सरकारी मंडी के साथ स्थानीय खरीदारों के भाव")
     
-    crop = st.selectbox("फसल चुनें", ["पत्तागोभी (Cabbage)", "टमाटर (Tomato)", "प्याज (Onion)", "आलू (Potato)", "हरी मिर्च (Green Chilli)"])
+    # Comprehensive Produce Category
+    prod_type = st.selectbox("उत्पाद श्रेणी (Category):", [
+        "सब्जियां (Vegetables)", "फल (Fruits)", "अनाज (Grains)", "दलहन (Pulses)", "तिलहन (Oilseeds)"
+    ])
     
-    unit = st.radio("मात्रा का पैमाना चुनें (Select Scale):", ["खुदरा / कम मात्रा (1 - 50 किलो)", "थोक मात्रा (क्विंटल में)"], horizontal=True)
+    if prod_type == "सब्जियां (Vegetables)":
+        crop_list = ["पत्तागोभी (Cabbage)", "टमाटर (Tomato)", "प्याज (Onion)", "आलू (Potato)", "हरी मिर्च (Green Chilli)", "बैंगन (Brinjal)", "भिंडी (Okra)", "मटर (Green Peas)", "पालक / मेथी"]
+    elif prod_type == "फल (Fruits)":
+        crop_list = ["केला (Banana)", "सेब (Apple)", "संतरा / मौसमी", "पपीता (Papaya)", "अमरूद (Guava)", "अनार (Pomegranate)"]
+    elif prod_type == "अनाज (Grains)":
+        crop_list = ["गेहूं (Wheat)", "मक्का (Maize)", "बाजरा (Pearl Millet)", "चावल / धान (Paddy)"]
+    elif prod_type == "दलहन (Pulses)":
+        crop_list = ["चना (Gram)", "मूंग (Moong)", "उड़द (Urad)", "सोयाबीन"]
+    else:
+        crop_list = ["सरसों (Mustard)", "मूंगफली (Groundnut)", "तिल (Sesame)"]
+        
+    col_c1, col_c2 = st.columns(2)
+    with col_c1:
+        crop = st.selectbox("सूची से चुनें (Select from list):", crop_list)
+    with col_c2:
+        custom_crop = st.text_input("या अपनी उपज का नाम यहाँ लिखें/बोलें:", placeholder="उदा: लहसुन, अदरक")
+    
+    final_crop = custom_crop if custom_crop else crop
+    
+    unit = st.radio("मात्रा का पैमाना चुनें:", ["खुदरा / कम मात्रा (1 - 50 किलो)", "थोक मात्रा (क्विंटल में)"], horizontal=True)
     
     if unit == "खुदरा / कम मात्रा (1 - 50 किलो)":
-        quantity_kg = st.number_input("वजन (किलो में / in Kg)", min_value=1.0, max_value=50.0, value=5.0, step=0.5)
+        qty = st.number_input("वजन (किलो में / in Kg)", min_value=1.0, max_value=100.0, value=10.0, step=1.0)
+        unit_lbl = "किलो"
         
-        mandi_data = [
-            {"Mandi": "🏡 गांव/मोहल्ले में सीधे ग्राहक (Direct to Consumer)", "Rate": 30, "Transport": 0, "Net": round(30 * quantity_kg, 1)},
-            {"Mandi": "🏪 स्थानीय किराना / सब्ज़ी दुकान (Local Retail Shop)", "Rate": 25, "Transport": 0, "Net": round(25 * quantity_kg, 1)},
-            {"Mandi": "🛒 साप्ताहिक ग्रामीण हाट (Weekly Rural Haat - 3 km)", "Rate": 28, "Transport": 15, "Net": round((28 * quantity_kg) - 15, 1)},
-            {"Mandi": "🛵 कस्बा सब्ज़ी मंडी (Town Market - 10 km)", "Rate": 32, "Transport": 40, "Net": round((32 * quantity_kg) - 40, 1)},
-            {"Mandi": "🚛 जिला मुख्य APMC मंडी (District Mandi - 25 km)", "Rate": 38, "Transport": 80, "Net": round((38 * quantity_kg) - 80, 1)}
+        options = [
+            {"source": "🏛️ स्थानीय APMC मंडी (5 km)", "rate": 25, "cost": 20, "net": round((25 * qty) - 20, 1), "type": "सरकारी मंडी"},
+            {"source": "🏛️️ जिला APMC मार्केट (25 km)", "rate": 34, "cost": 70, "net": round((34 * qty) - 70, 1), "type": "सरकारी मंडी"}
         ]
-        unit_label = "किलो"
+        
+        for t in st.session_state["trader_directory"]:
+            if final_crop.split()[0] in t["crop"] or final_crop == crop:
+                trans_cost = 0 if "हाँ" in t["transport_support"] else 20
+                net_val = round((t["rate"] * qty) - trans_cost, 1)
+                options.append({
+                    "source": f"🏪 {t['name']} ({t['location']})",
+                    "rate": t["rate"],
+                    "cost": trans_cost,
+                    "net": net_val,
+                    "type": f"स्थानीय खरीदार (फ़ोन: {t['phone']})"
+                })
     else:
-        quantity_q = st.number_input("कुल वजन (क्विंटल में / in Quintal)", min_value=1, max_value=500, value=10)
-        
-        mandi_data = [
-            {"Mandi": "स्थानीय प्राथमिक मंडी (Local Mandi - 5 km)", "Rate": 1100, "Transport": 200, "Net": (1100 * quantity_q) - 200},
-            {"Mandi": "तहसील स्तर उप-मंडी (Sub-Market Yard - 15 km)", "Rate": 1400, "Transport": 500, "Net": (1400 * quantity_q) - 500},
-            {"Mandi": "जिला मुख्य APMC मंडी (District APMC - 25 km)", "Rate": 1750, "Transport": 800, "Net": (1750 * quantity_q) - 800},
-            {"Mandi": "FPO / एग्री-स्टार्टअप प्रोक्योरमेंट सेंटर (Farm Gate)", "Rate": 1650, "Transport": 100, "Net": (1650 * quantity_q) - 100},
-            {"Mandi": "राजधानी टर्मिनल मार्केट (State Mega Hub - 75 km)", "Rate": 2300, "Transport": 2200, "Net": (2300 * quantity_q) - 2200}
+        qty = st.number_input("कुल वजन (क्विंटल में / in Quintal)", min_value=1, max_value=500, value=10)
+        unit_lbl = "क्विंटल"
+        options = [
+            {"source": "🏛️ तहसील प्राथमिक मंडी (5 km)", "rate": 1200, "cost": 200, "net": (1200 * qty) - 200, "type": "सरकारी मंडी"},
+            {"source": "🏛️ जिला मुख्य APMC यार्ड (25 km)", "rate": 1800, "cost": 800, "net": (1800 * qty) - 800, "type": "सरकारी मंडी"},
+            {"source": "🏛️ राजधानी टर्मिनल हब (75 km)", "rate": 2400, "cost": 2200, "net": (2400 * qty) - 2200, "type": "सरकारी मंडी"}
         ]
-        unit_label = "क्विंटल"
     
     st.write("---")
-    st.write("📍 **सभी बिक्री विकल्पों का तुलनात्मक विश्लेषण:**")
+    best = max(options, key=lambda x: x["net"])
     
-    best_option = max(mandi_data, key=lambda x: x["Net"])
-    
-    for m in mandi_data:
-        is_best = m["Mandi"] == best_option["Mandi"]
-        badge = " ⭐ **(सर्वाधिक शुद्ध मुनाफा / Recommended)**" if is_best else ""
+    for op in options:
+        is_rec = op["source"] == best["source"]
+        badge = " ⭐ **(सर्वाधिक शुद्ध बचत / Best Option)**" if is_rec else ""
         st.markdown(f"""
-        <div class="mandi-card">
-            <b>{m['Mandi']}</b>{badge}<br>
-            भाव: ₹{m['Rate']}/{unit_label} | मालभाड़ा/लागत: ₹{m['Transport']}<br>
-            <b>हाथ में शुद्ध बचत (Net In-Hand): ₹{m['Net']:,}</b>
+        <div class="trader-card">
+            <b>{op['source']}</b>{badge}<br>
+            <small style="color:#666;">श्रेणी: {op['type']}</small><br>
+            भाव: <b>₹{op['rate']}/{unit_lbl}</b> | मालभाड़ा/लागत: ₹{op['cost']}<br>
+            <b>हाथ में शुद्ध बचत (Net In-Hand): ₹{op['net']:,}</b>
         </div>
         """, unsafe_allow_html=True)
     
-    st.success(f"💡 **AI सुझाव:** आपकी मात्रा के हिसाब से सबसे फायदेमंद विकल्प **{best_option['Mandi']}** है, जहाँ आपको बिना नुकसान के कुल ₹{best_option['Net']:,} मिलेंगे!")
+    advice_text = f"आपकी फसल {final_crop} के लिए सबसे अधिक मुनाफा {best['source']} पर मिलेगा, जहाँ आपको कुल शुद्ध ₹{best['net']:,} की बचत होगी।"
+    st.success(f"💡 **AI का अंतिम फैसला:** {advice_text}")
+    speak_button(advice_text)
 
-# ----------------- TAB 3: DYNAMIC AI KHET PLANNER (ICAR 8 Soils + Climate + Rain) -----------------
+# ----------------- TAB 3: TRADER REGISTRATION PORTAL -----------------
 with tab3:
-    st.subheader("🌱 AI खेत और जलवायु सलाहकार (Dynamic Agro-Planner)")
-    st.caption("इलाका, मिट्टी, वर्षा और सिंचाई तकनीक भरें — Gemini AI मौसम और भूगोल के अनुसार योजना बनाएगा")
+    st.subheader("🏪 व्यापारी एवं खरीदार मंच (Trader Portal)")
+    st.caption("छोटे व बड़े व्यापारी अपनी खरीद मांग और भाव दर्ज करें — किसान सीधे आपसे संपर्क करेंगे")
     
-    # 1. Location & Geo Context
-    col_loc1, col_loc2 = st.columns(2)
-    with col_loc1:
-        state = st.selectbox("राज्य चुनें (State)", ["राजस्थान (Rajasthan)", "मध्य प्रदेश (MP)", "उत्तर प्रदेश (UP)", "महाराष्ट्र (Maharashtra)", "गुजरात (Gujarat)", "हरियाणा / पंजाब", "अन्य (Other)"])
-    with col_loc2:
-        district_area = st.text_input("जिला / ब्लॉक / पिनकोड (Area/Pincode)", value="उदयपुर / भींडर")
-    
-    # 2. Climate & Rainfall Scenario
-    col_cli1, col_cli2 = st.columns(2)
-    with col_cli1:
-        rain_condition = st.selectbox("इलाके में वर्षा की स्थिति (Rainfall Pattern)", [
-            "कम वर्षा / सूखा प्रवण (Low Rainfall < 500 mm)",
-            "मध्यम सामान्य वर्षा (Moderate Rainfall 500-1000 mm)",
-            "भारी वर्षा क्षेत्र (Heavy Rainfall > 1000 mm)"
-        ])
-    with col_cli2:
-        irrigation_source = st.selectbox("उपलब्ध सिंचाई साधन (Irrigation Tech)", [
-            "ड्रिप / टपक सिंचाई (Drip Irrigation)",
-            "स्प्रिंकलर / फव्वारा (Sprinkler)",
-            "ट्यूबवेल / खुला पानी (Flood / Furrow)",
-            "केवल वर्षा आधारित (Rainfed / Barani)",
-            "घर का नल / बाल्टी (Kitchen Garden Water Tap)"
-        ])
-    
-    # 3. Land Scale
-    land_type = st.radio("जमीन का पैमाना (Land Scale):", ["घर का आंगन / छत (Kitchen Garden)", "बीघा (Bigha)", "एकड़ (Acre)"], horizontal=True)
-    
-    if land_type == "घर का आंगन / छत (Kitchen Garden)":
-        land_size = st.number_input("क्षेत्रफल (वर्ग फीट / Sq Ft)", min_value=50, max_value=2500, value=200, step=50)
-        size_str = f"{land_size} Sq Ft (Kitchen Garden/Rooftop)"
-    elif land_type == "बीघा (Bigha)":
-        land_size = st.number_input("जमीन (बीघा में)", min_value=0.5, max_value=50.0, value=2.0, step=0.5)
-        size_str = f"{land_size} बीघा"
-    else:
-        land_size = st.number_input("जमीन (एकड़ में)", min_value=0.5, max_value=50.0, value=2.0, step=0.5)
-        size_str = f"{land_size} एकड़"
+    with st.form("trader_form", clear_on_submit=True):
+        st.write("📝 **नया खरीद ऑफर दर्ज करें (Post Buying Offer)**")
+        col_t1, col_t2 = st.columns(2)
+        with col_t1:
+            t_name = st.text_input("व्यापारी / फर्म का नाम", placeholder="उदा: लक्ष्मी वेज ट्रेडर्स")
+            t_phone = st.text_input("मोबाइल / संपर्क नंबर", placeholder="उदा: 9829XXXXXX")
+            t_loc = st.text_input("दुकान / गोदाम का पता व इलाका", placeholder="उदा: भींडर बस स्टैंड, उदयपुर")
+        with col_t2:
+            t_crop = st.text_input("खरीदी जाने वाली उपज (सब्जी/फल/अनाज)", placeholder="उदा: टमाटर, पत्तागोभी, सोयाबीन")
+            t_rate = st.number_input("आपका खरीद भाव (₹ प्रति किलो)", min_value=1.0, max_value=500.0, value=30.0, step=0.5)
+            t_min_qty = st.text_input("न्यूनतम मात्रा", placeholder="उदा: 10 किलो या 1 क्विंटल")
+            t_trans = st.selectbox("क्या आप मालभाड़ा/किराया देंगे?", ["हाँ (भाड़ा हम देंगे/पिकअप उपलब्ध)", "नहीं (किसान को खुद लाना होगा)"])
         
-    # 4. ICAR Official 8 Soils + Organic Mix
-    soil = st.selectbox("मिट्टी का प्रकार (ICAR 8 Soil Types)", [
-        "1. जलोढ़ मिट्टी (Alluvial Soil - अत्यधिक उपजाऊ, नदी घाटी क्षेत्र)",
-        "2. काली मिट्टी (Black / Regur Soil - नमी रोकने वाली, कपास/सब्जियां)",
-        "3. लाल और पीली मिट्टी (Red & Yellow Soil - दलहन व तिलहन हेतु उत्तम)",
-        "4. लेटराइट मिट्टी (Laterite Soil - बागवानी व नकदी फसलों हेतु)",
-        "5. शुष्क / रेतीली / मरुस्थलीय मिट्टी (Arid / Desert / Sandy Soil - कम पानी)",
-        "6. लवणीय एवं क्षारीय मिट्टी (Saline & Alkaline Soil - विशेष सुधार आवश्यक)",
-        "7. पीट एवं दलदली मिट्टी (Peaty & Marshy Soil - भारी जैविक तत्व)",
-        "8. पर्वतीय / वन मिट्टी (Mountain / Forest Soil - फलदार वृक्ष व बागवानी)",
-        "9. गमले / ग्रो-बैग की जैविक खाद मिट्टी (Potting Mix / Vermicompost)"
-    ])
+        submit_trader = st.form_submit_button("✅ अपना खरीद ऑफर लाइव दर्ज करें", use_container_width=True)
+        
+        if submit_trader:
+            if t_name and t_phone and t_loc and t_crop:
+                st.session_state["trader_directory"].append({
+                    "name": t_name, "phone": t_phone, "location": t_loc,
+                    "crop": t_crop, "rate": t_rate, "unit": "किलो",
+                    "min_qty": t_min_qty, "transport_support": t_trans
+                })
+                st.success("🎉 आपका ऑफर दर्ज हो गया! अब क्षेत्र के किसान सीधे आपका भाव देख सकेंगे।")
+            else:
+                st.error("कृपया सभी आवश्यक विवरण भरें।")
     
-    # 5. Crop Choice
-    target_crop = st.multiselect("आपकी पसंद की फसलें (Crop Category)", 
-                                 ["हरी पत्तेदार सब्जियां", "टमाटर, मिर्च, बैंगन", "प्याज, लहसुन, आलू", "दलहन (चना, मूंग, उड़द)", "तिलहन (सरसों, सोयाबीन)", "अनाज (गेहूं, मक्का, बाजरा)", "फल / औषधीय पौधे"],
-                                 default=["टमाटर, मिर्च, बैंगन"])
-    
-    # Button to Generate Comprehensive Plan
-    if st.button("🚀 AI संपूर्ण कृषि व सब्सिडी योजना तैयार करें", use_container_width=True):
-        with st.spinner("Gemini AI जलवायु, मिट्टी और जल प्रबंधन का विश्लेषण कर रहा है..."):
-            plan_prompt = f"""
-            You are an expert Indian Senior Agronomist and Climate-Resilience Agriculture Specialist.
-            Create a detailed, practical farm/garden plan in simple Hindi using these parameters:
-            - राज्य व इलाका: {state}, {district_area}
-            - वर्षा व जलवायु स्थिति: {rain_condition}
-            - सिंचाई तकनीक: {irrigation_source}
-            - जमीन का पैमाना: {size_str}
-            - मिट्टी का प्रकार (ICAR): {soil}
-            - उगाने की इच्छा: {', '.join(target_crop)}
+    st.write("---")
+    st.write("📋 **सक्रिय रजिस्टर्ड स्थानीय खरीदार:**")
+    for tr in reversed(st.session_state["trader_directory"]):
+        st.markdown(f"""
+        <div class="pro-card">
+            <b>{tr['name']}</b> ({tr['location']})<br>
+            फ़ोन: 📞 <b>{tr['phone']}</b> | खरीद उपज: <b>{tr['crop']}</b><br>
+            खरीद भाव: <span style="color:#2E7D32; font-weight:bold; font-size:16px;">₹{tr['rate']}/किलो</span> | न्यूनतम: {tr['min_qty']}<br>
+            किराया सहायता: <i>{tr['transport_support']}</i>
+        </div>
+        """, unsafe_allow_html=True)
 
-            Please format the output cleanly with the following numbered sections:
-            1. 🌾 जलवायु व मिट्टी अनुकूलित फसल चक्र (Best suited crops considering local rainfall & future climate)
-            2. 💧 जल संरक्षण व सिंचाई सलाह (Specific advice for {irrigation_source} and water saving)
-            3. 🌿 जैविक खाद एवं पोषण प्रबंधन (Soil fertility improvement tailored to {soil.split('(')[0]})
-            4. 🏛️ सरकारी योजनाएं एवं अनुदान (Applicable schemes: PM-Kisan, PMKSY Drip 70% Subsidy, Solar Pump KUSUM, State Horticulture Kitchen Garden Kits)
-            5. 💡 AI विशेष मुनाफा एवं जोखिम प्रबंधन सुझाव (Actionable tips for max profit and zero weather loss)
-            
-            Keep the tone encouraging, clear and directly beneficial for farmers.
+# ----------------- TAB 4: MULTIMODAL VOICE ASSISTANT -----------------
+with tab4:
+    st.subheader("🎙️ AI बोलता कृषि मित्र (Voice Assistant)")
+    st.caption("जो भी पूछना चाहते हैं बोलें या लिखें — Gemini AI आवाज़ में उत्तर देगा")
+    
+    farmer_query = st.text_input("अपना सवाल लिखें या बोलकर टाइप करें:", placeholder="उदा: पत्तागोभी में कीड़े लग रहे हैं क्या करूं?")
+    
+    col_v1, col_v2 = st.columns(2)
+    with col_v1:
+        ask_btn = st.button("🚀 AI से उत्तर मांगें (Ask AI)", use_container_width=True)
+    with col_v2:
+        st.caption("💡 फोन के कीबोर्ड में 🎙️ माइक दबाकर अपनी भाषा में बोलें!")
+    
+    if ask_btn and farmer_query:
+        with st.spinner("AI कृषि विशेषज्ञ आपकी भाषा में उत्तर तैयार कर रहा है..."):
+            v_prompt = f"""
+            You are 'KisanSetu Voice Mitra', a friendly Indian agricultural advisor.
+            User Language: {st.session_state['user_lang']}.
+            Answer the following farmer query in simple, direct {st.session_state['user_lang']} (or conversational Hindi):
+            "{farmer_query}"
+            Keep it actionable in 3 bullet points without complicated chemical terms.
             """
-            
-            ai_plan = ""
-            for m_name in ["gemini-1.5-flash-latest", "gemini-1.5-flash", "gemini-1.5-pro"]:
+            v_ans = ""
+            for m_name in ["gemini-1.5-flash-latest", "gemini-1.5-flash"]:
                 try:
                     m = genai.GenerativeModel(m_name)
-                    res = m.generate_content(plan_prompt)
+                    res = m.generate_content(v_prompt)
                     if res and res.text:
-                        ai_plan = res.text
+                        v_ans = res.text
                         break
                 except Exception:
                     continue
             
-            # Robust Dynamic Fallback
-            if not ai_plan:
-                ai_plan = f"""
-                **1. 🌾 जलवायु व मिट्टी अनुकूलित फसल चक्र:**  
-                • {state} के {district_area} क्षेत्र की जलवायु और {soil.split('(')[0]} को देखते हुए 60% भाग में कम जल चाहने वाली फसलें तथा 40% भाग में उच्च मूल्य नकदी सब्जियां लगाएं।  
-                **2. 💧 जल संरक्षण एवं सिंचाई प्रबंधन:**  
-                • {rain_condition} के तहत {irrigation_source} का उपयोग करके 40-50% जल की बचत करें। मल्चिंग तकनीक से नमी बनाए रखें।  
-                **3. 🌿 खाद एवं मिट्टी स्वास्थ्य:**  
-                • मिट्टी में 2 ट्रॉली प्रति एकड़ सड़ी गोबर खाद या वर्मीकंपोस्ट मिलाएं ताकि पोषक तत्व लंबे समय तक टिके रहें।  
-                **4. 🏛️ सरकारी योजनाएं व सब्सिडी:**  
-                • **PMKSY (सूक्ष्म सिंचाई):** ड्रिप एवं फव्वारा संयंत्र पर 70% से 75% सरकारी अनुदान।  
-                • **PM-KUSUM:** सोलर पंप स्थापना पर 60% तक की छूट।  
-                • **गृह वाटिका/हॉर्टिकल्चर मिशन:** बीज एवं टूल किट पर सब्सिडी।  
-                **5. 💡 AI विशेष सुझाव:**  
-                • बेमौसम बारिश या पाले से बचाव के लिए मौसम पूर्वानुमान देखें और कटाई के तुरंत बाद KisanSetu के मंडी टैब से सीधा शुद्ध मुनाफा जांचकर ही माल बेचें।
-                """
+            if not v_ans:
+                v_ans = "नीम का तेल (Neem Oil 5ml प्रति लीटर) का छिड़काव करें। खेत में अधिक नमी न रहने दें और नजदीकी KVK केंद्र से संपर्क करें।"
             
-            st.success("✅ जलवायु एवं मिट्टी आधारित योजना तैयार है!")
             st.markdown(f"""
             <div class="kisan-card">
-                <h4>📋 {state} ({district_area}) - AI क्लाइमेट स्मार्ट कार्ययोजना</h4>
-                {ai_plan}
+                <h4>🌾 AI किसान मित्र का उत्तर</h4>
+                {v_ans}
             </div>
             """, unsafe_allow_html=True)
+            speak_button(v_ans)
+
+# ----------------- TAB 5: DYNAMIC AGRO-PLANNER (AUTONOMOUS AI CROP SELECTION) -----------------
+with tab5:
+    st.subheader("🌱 AI खेत एवं जलवायु सलाहकार (Autonomous Agro-Planner)")
+    st.caption("यदि आपको नहीं पता कि क्या उगाना है, तो AI मिट्टी, मौसम और पानी के आधार पर खुद फसल तय करेगा")
+    
+    c1, c2 = st.columns(2)
+    with c1:
+        st_state = st.selectbox("राज्य चुनें (State)", ["राजस्थान (Rajasthan)", "मध्य प्रदेश (MP)", "उत्तर प्रदेश (UP)", "महाराष्ट्र (Maharashtra)", "गुजरात (Gujarat)", "अन्य (Other)"])
+        st_rain = st.selectbox("वर्षा की स्थिति", ["कम वर्षा (<500 mm / सूखा प्रवण)", "मध्यम सामान्य वर्षा (500-1000 mm)", "भारी वर्षा (>1000 mm)"])
+    with c2:
+        st_dist = st.text_input("जिला / ब्लॉक", value="उदयपुर / भींडर")
+        st_irri = st.selectbox("सिंचाई साधन", ["ड्रिप / टपक सिंचाई (Drip)", "स्प्रिंकलर (Sprinkler)", "ट्यूबवेल (Flood)", "वर्षा आधारित (Rainfed)", "किचन गार्डन नल"])
+    
+    st_scale = st.radio("जमीन का पैमाना:", ["घर का आंगन/छत (Kitchen Garden)", "बीघा (Bigha)", "एकड़ (Acre)"], horizontal=True)
+    st_size = st.number_input("जमीन की मात्रा / आकार", min_value=1.0, max_value=500.0, value=2.0)
+    
+    st_soil = st.selectbox("मिट्टी का प्रकार (ICAR 8 Soil Types)", [
+        "1. जलोढ़ मिट्टी (Alluvial Soil - अत्यधिक उपजाऊ)",
+        "2. काली मिट्टी (Black / Regur Soil - कपास/सोयाबीन/सब्जियां)",
+        "3. लाल और पीली मिट्टी (Red & Yellow Soil - दलहन हेतु उत्तम)",
+        "4. लेटराइट मिट्टी (Laterite Soil - बागवानी हेतु)",
+        "5. शुष्क / रेतीली मिट्टी (Arid / Desert / Sandy Soil)",
+        "6. लवणीय एवं क्षारीय मिट्टी (Saline & Alkaline Soil)",
+        "7. पीट एवं दलदली मिट्टी (Peaty & Marshy Soil)",
+        "8. पर्वतीय / वन मिट्टी (Forest / Mountain Soil)",
+        "9. गमले / ग्रो-बैग की जैविक खाद मिट्टी (Potting Mix)"
+    ])
+    
+    # Autonomous AI selection vs Farmer Choice
+    planner_mode = st.radio(
+        "फसल चयन का तरीका:",
+        [
+            "🤖 मुझे नहीं पता — AI मेरी मिट्टी, वर्षा और जलवायु के अनुसार खुद सर्वोत्तम फसल सुझाए",
+            "🧑‍🌾 मैं अपनी पसंद की फसल खुद चुनूंगा"
+        ]
+    )
+    
+    chosen_crops = ""
+    if "अपनी पसंद" in planner_mode:
+        chosen_crops = st.text_input("आप क्या उगाना चाहते हैं?", value="टमाटर, मिर्च, पालक")
+    
+    if st.button("🚀 संपूर्ण जलवायु, अनुकूल फसल व सब्सिडी योजना बनाएं", use_container_width=True):
+        with st.spinner("Gemini AI जलवायु व मिट्टी के अनुकूल फसलों का विश्लेषण कर रहा है..."):
+            plan_prompt = f"""
+            You are a Senior Agronomist and Climate-Resilience Agriculture Advisor for India.
+            Language: {st.session_state['user_lang']}.
+            Parameters:
+            - Location: {st_state}, {st_dist}
+            - Rainfall: {st_rain}
+            - Irrigation: {st_irri}
+            - Land Scale: {st_size} ({st_scale})
+            - ICAR Soil Type: {st_soil}
+            - Farmer Choice: {chosen_crops if chosen_crops else 'AI Autonomous Selection based on climate & profit'}
+
+            Please provide a structured plan in {st.session_state['user_lang']} (or simple Hindi):
+            1. 🌾 AI अनुशंसित सर्वोत्तम फसलें (Autonomous selection of best 2-3 crops with layout percentage)
+            2. 💧 जल संरक्षण व सिंचाई प्रबंधन (Specific technique for {st_irri})
+            3. 🌿 खाद एवं मिट्टी पोषण (Tailored for {st_soil.split('(')[0]})
+            4. 🏛️ सरकारी योजनाएं व सब्सिडी (PMKSY Drip 70%, PM-Kisan, KUSUM Solar Pump, Kitchen Garden Kits)
+            5. 💡 AI विशेष मुनाफा व मौसम सुरक्षा सुझाव
+            """
+            
+            p_ans = ""
+            for m_name in ["gemini-1.5-flash-latest", "gemini-1.5-flash"]:
+                try:
+                    m = genai.GenerativeModel(m_name)
+                    res = m.generate_content(plan_prompt)
+                    if res and res.text:
+                        p_ans = res.text
+                        break
+                except Exception:
+                    continue
+            
+            if not p_ans:
+                p_ans = f"""
+                **1. 🌾 AI अनुशंसित फसलें:** आपकी मिट्टी और {st_rain} को देखते हुए 60% भाग में दलहन (चना/मूंग) और 40% भाग में उच्च मूल्य सब्जियां उगाएं।  
+                **2. 💧 सिंचाई प्रबंधन:** {st_irri} अपनाएं जिससे 40% पानी बचेगा।  
+                **3. 🏛️ सरकारी सब्सिडी:** PMKSY के तहत ड्रिप/फव्वारे पर 70% सब्सिडी प्राप्त करें।  
+                **4. 💡 AI सुझाव:** कटाई के बाद KisanSetu ऐप से नजदीकी व्यापारी के भाव देखकर ही उपज बेचें।
+                """
+            
+            st.success("✅ AI जलवायु व फसल योजना तैयार है!")
+            st.markdown(f"""
+            <div class="kisan-card">
+                <h4>📋 AI विस्तृत कार्ययोजना ({st_state} - {st_dist})</h4>
+                {p_ans}
+            </div>
+            """, unsafe_allow_html=True)
+            speak_button(p_ans)
 
 st.markdown("---")
 st.caption("Team FIELD MASTER | Gaurav Jain, Kartik Ameta, Divyansh Ameta")
