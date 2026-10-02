@@ -132,7 +132,7 @@ def mic_helper():
             recognition.onresult = function(event) {
                 var transcript = event.results[0][0].transcript;
                 navigator.clipboard.writeText(transcript);
-                alert('आप बोले: ' + transcript + ' (कॉपी हो गया! इनपुट बॉक्स में पेस्ट करें)');
+                alert('आप बोले: ' + transcript + ' (कॉपी हो गया! बॉक्स में पेस्ट करें)');
             };
             recognition.start();
         " style="background-color: #E8F5E9; color: #1B5E20; border: 1px solid #4CAF50; padding: 6px 12px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer;">
@@ -143,7 +143,7 @@ def mic_helper():
     """
     st.components.v1.html(mic_html, height=40)
 
-# Welcome message translations - EXACT FORMAT REQUESTED
+# Welcome message translations
 welcome_dict = {
     "हिंदी (Hindi)": "आपका किसानसेतु ऐप में स्वागत है!",
     "मेवाड़ी (Mewari)": "आपरो किसानसेतु ऐप में स्वागत है!",
@@ -190,16 +190,14 @@ if not st.session_state["onboarded"]:
 
 # ----------------- PAGE 2: MAIN DASHBOARD & DETAILED MODULES -----------------
 else:
-    # Top Welcome Banner in Selected Language
     welcome_text = welcome_dict.get(st.session_state["selected_bhasha"], welcome_dict["हिंदी (Hindi)"])
     st.markdown(f'<div class="welcome-banner">✨ {welcome_text} ({st.session_state["selected_role"].split()[1]})</div>', unsafe_allow_html=True)
     
-    # Trigger Automatic Voice greeting on load
     auto_speak(welcome_text)
     
     col_nav1, col_nav2 = st.columns([3, 1])
     with col_nav2:
-        if st.button("⚙️ रीसेट / भाषा"):
+        if st.button("⚙️️ रीसेट / भाषा"):
             st.session_state["onboarded"] = False
             st.session_state["active_module"] = "dashboard"
             st.rerun()
@@ -222,7 +220,6 @@ else:
         st.markdown("<h3 style='color:#1B5E20;'>📂 सभी सुविधाएं (Select Service)</h3>", unsafe_allow_html=True)
         st.caption("नीचे दिए गए किसी भी बॉक्स पर टैप करें:")
         
-        # Grid Card 1
         st.markdown("""
         <div class="service-card">
             <h4 style="margin:0; color:#1B5E20;">📸 1. फसल जांच (AI Produce Scan)</h4>
@@ -233,7 +230,6 @@ else:
             st.session_state["active_module"] = "scan"
             st.rerun()
 
-        # Grid Card 2
         st.markdown("""
         <div class="service-card">
             <h4 style="margin:0; color:#1B5E20;">🚛 2. मंडी व लोकल भाव (Mandi & Local Arbitrage)</h4>
@@ -244,7 +240,6 @@ else:
             st.session_state["active_module"] = "mandi"
             st.rerun()
 
-        # Grid Card 3
         st.markdown("""
         <div class="service-card">
             <h4 style="margin:0; color:#1B5E20;">🏪 3. व्यापारी बाज़ार (Trader Marketplace)</h4>
@@ -255,18 +250,16 @@ else:
             st.session_state["active_module"] = "traders"
             st.rerun()
 
-        # Grid Card 4
         st.markdown("""
         <div class="service-card">
             <h4 style="margin:0; color:#1B5E20;">🎙️ 4. AI बोलता कृषि मित्र (Voice Assistant)</h4>
             <p style="margin:4px 0 8px 0; color:#555; font-size:13px;">बोलकर या लिखकर सवाल पूछें — AI बोलकर और लिखकर दोनों तरह समझाएगा।</p>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("🎙️ AI बोलता मित्र खोलें", key="btn_m4", use_container_width=True):
+        if st.button("🎙️️ AI बोलता मित्र खोलें", key="btn_m4", use_container_width=True):
             st.session_state["active_module"] = "voice"
             st.rerun()
 
-        # Grid Card 5
         st.markdown("""
         <div class="service-card">
             <h4 style="margin:0; color:#1B5E20;">🌱 5. स्मार्ट खेत व जलवायु प्लानर (AI Planner)</h4>
@@ -379,7 +372,7 @@ else:
 
     # --- VIEW 4: MODULE 3 (TRADER PORTAL) ---
     elif st.session_state["active_module"] == "traders":
-        if st.button("⬅️ मुख्य डैशबोर्ड पर वापस जाएं"):
+        if st.button("⬅️️ मुख्य डैशबोर्ड पर वापस जाएं"):
             st.session_state["active_module"] = "dashboard"
             st.rerun()
             
@@ -422,7 +415,7 @@ else:
 
     # --- VIEW 5: MODULE 4 (VOICE ASSISTANT) ---
     elif st.session_state["active_module"] == "voice":
-        if st.button("⬅️️ मुख्य डैशबोर्ड पर वापस जाएं"):
+        if st.button("⬅️ मुख्य डैशबोर्ड पर वापस जाएं"):
             st.session_state["active_module"] = "dashboard"
             st.rerun()
             
@@ -457,7 +450,7 @@ else:
                 st.markdown(f'<div class="kisan-card"><h4>🌾 AI मित्र का उत्तर</h4>{v_ans}</div>', unsafe_allow_html=True)
                 speak_button(v_ans)
 
-    # --- VIEW 6: MODULE 5 (SMART PLANNER WITH DUAL INTELLIGENCE) ---
+    # --- VIEW 6: MODULE 5 (SMART PLANNER - DYNAMIC UNIT FIXED) ---
     elif st.session_state["active_module"] == "planner":
         if st.button("⬅️ मुख्य डैशबोर्ड पर वापस जाएं"):
             st.session_state["active_module"] = "dashboard"
@@ -474,8 +467,18 @@ else:
             st_dist = st.text_input("जिला / ब्लॉक", value="उदयपुर / भींडर")
             st_irri = st.selectbox("सिंचाई साधन", ["ड्रिप / टपक सिंचाई (Drip)", "स्प्रिंकलर (Sprinkler)", "ट्यूबवेल (Flood)", "वर्षा आधारित (Rainfed)", "किचन गार्डन नल"])
             
+        # FIXED: Dynamic Unit & Input Label for Land Scale
         st_scale = st.radio("जमीन का पैमाना:", ["घर का आंगन/छत (Kitchen Garden)", "बीघा (Bigha)", "एकड़ (Acre)"], horizontal=True)
-        st_size = st.number_input("जमीन की मात्रा / संख्या", min_value=1.0, max_value=500.0, value=2.0)
+        
+        if st_scale == "घर का आंगन/छत (Kitchen Garden)":
+            st_size = st.number_input("क्षेत्रफल (वर्ग फीट / Sq Ft में):", min_value=20.0, max_value=3000.0, value=200.0, step=50.0)
+            land_display_str = f"{int(st_size)} वर्ग फीट (Kitchen Garden / छत)"
+        elif st_scale == "बीघा (Bigha)":
+            st_size = st.number_input("जमीन की मात्रा (बीघा में):", min_value=0.5, max_value=100.0, value=2.0, step=0.5)
+            land_display_str = f"{st_size} बीघा"
+        else:
+            st_size = st.number_input("जमीन की मात्रा (एकड़ में):", min_value=0.5, max_value=100.0, value=2.0, step=0.5)
+            land_display_str = f"{st_size} एकड़"
         
         st_soil = st.selectbox("मिट्टी का प्रकार (ICAR 8 Soil Types)", [
             "1. जलोढ़ मिट्टी (Alluvial Soil - अत्यधिक उपजाऊ)",
@@ -503,12 +506,12 @@ else:
                 - Rainfall & Climate: {st_rain}
                 - Irrigation Tech: {st_irri}
                 - Soil: {st_soil}
-                - Land: {st_size} ({st_scale})
+                - Land Scale: {land_display_str}
                 - Farmer's Preferred Crop: {farmer_preferred_crop}
 
                 Generate a comprehensive two-part report in {st.session_state['selected_bhasha']} (or simple Hindi):
                 PART 1: 📋 किसान की पसंदीदा फसल ({farmer_preferred_crop}) की संपूर्ण कार्ययोजना:
-                - इस मिट्टी और वर्षा में यह कैसे उगेगी?
+                - इस पैमाने ({land_display_str}), मिट्टी और वर्षा में यह कैसे उगेगी?
                 - खाद व सिंचाई प्रबंधन
                 
                 PART 2: 🤖 AI की स्वतंत्र सलाह एवं सर्वोत्तम वैकल्पिक फसलें (Autonomous Recommendation):
@@ -530,9 +533,9 @@ else:
                         continue
                 if not plan_res:
                     plan_res = f"""
-                    **भाग 1: आपकी पसंद ({farmer_preferred_crop})** — इसे {st_irri} से सींचें और प्रति एकड़ जैविक खाद का प्रयोग करें।  
-                    **भाग 2: AI स्वतंत्र सलाह** — आपकी {st_soil.split('(')[0]} और {st_rain} को देखते हुए 60% भाग में दलहन (चना/मूंग) और 40% भाग में {farmer_preferred_crop} उगाना सबसे सुरक्षित और लाभदायक रहेगा।  
-                    **भाग 3: सरकारी सब्सिडी** — PMKSY के तहत ड्रिप संयंत्र पर 70% सब्सिडी और PM-Kisan सहायता का लाभ लें।
+                    **भाग 1: आपकी पसंद ({farmer_preferred_crop})** — इसे {land_display_str} में {st_irri} से सींचें और वर्मीकंपोस्ट का प्रयोग करें।  
+                    **भाग 2: AI स्वतंत्र सलाह** — आपकी {st_soil.split('(')[0]} और {st_rain} को देखते हुए 60% भाग में दलहन और 40% भाग में {farmer_preferred_crop} उगाना सबसे सुरक्षित और लाभदायक रहेगा।  
+                    **भाग 3: सरकारी सब्सिडी** — PMKSY के तहत ड्रिप संयंत्र पर 70% सब्सिडी और गृह वाटिका किट का लाभ लें।
                     """
                 
                 st.success("✅ दोहरी कार्ययोजना तैयार है!")
