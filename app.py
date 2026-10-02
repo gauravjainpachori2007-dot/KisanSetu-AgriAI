@@ -15,8 +15,8 @@ st.markdown("""
     <style>
     .main-title { font-size: 24px; font-weight: bold; color: #2E7D32; text-align: center; }
     .sub-title { font-size: 13px; color: #666; text-align: center; margin-bottom: 12px; }
-    .kisan-card { background-color: #F1F8E9; border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #4CAF50; }
-    .mandi-card { background-color: #FFFDE7; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 5px solid #FBC02D; }
+    .kisan-card { background-color: #F1F8E9; border-radius: 8px; padding: 12px; margin-bottom: 10px; border-left: 5px solid #4CAF50; color: #1B5E20; }
+    .mandi-card { background-color: #FFFDE7; border-radius: 8px; padding: 12px; margin-bottom: 8px; border-left: 5px solid #FBC02D; color: #333; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -35,7 +35,8 @@ with tab1:
     
     if img_file is not None:
         image = Image.open(img_file)
-        st.image(image, caption="आपकी फसल", use_column_width=True)
+        # Fixed parameter here
+        st.image(image, caption="आपकी फसल", use_container_width=True)
         
         if st.button("🔍 AI जांच शुरू करें (Analyze with Gemini)", use_container_width=True):
             if not api_key:
@@ -51,7 +52,7 @@ with tab1:
                         2. Quality Grade (Grade A - Fresh/Premium, Grade B - Good, Grade C - Perishable/Needs Quick Sale)
                         3. Estimated Remaining Shelf-Life (in days)
                         4. Actionable Advice for Farmer (Kisan ke liye sujhav)
-                        Keep the language very simple and encouraging.
+                        Keep the language very simple, clear and encouraging.
                         """
                         response = model.generate_content([prompt, image])
                         
@@ -104,7 +105,7 @@ with tab3:
     st.markdown("""
     <div class="kisan-card">
         <h4>📋 अनुशंसित फसल चक्र</h4>
-        <p>• <b>60% क्षेत्र:</b> दलहन/अनाज (कम पानी, सुरक्षित आय)</p>
+        <p>• <b>60% क्षेत्र:</b> दलहन/अनाज (सुरक्षित आय)</p>
         <p>• <b>40% क्षेत्र:</b> उच्च मूल्य नकदी फसल (High Value Perishables)</p>
         <hr>
         <h4>🏛️ सरकारी योजनाएं</h4>
