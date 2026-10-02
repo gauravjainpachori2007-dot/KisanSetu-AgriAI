@@ -1,6 +1,7 @@
 # 🌾 KisanSetu AI (किसान सेतु)
 **Autonomous Agri-Intelligence & Perishable Distress Sale Prevention Engine**  
 *Submitted for Google Build with AI: Code for Communities 2.0 (Track: Agricultural Intelligence)*
+### 🌐 [🚀 Click Here to Open Live Mobile Web App](https://kisansetu-agriai-kisan-setu.streamlit.app)
 
 ---
 
